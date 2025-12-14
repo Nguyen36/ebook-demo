@@ -8,38 +8,86 @@ const PDFPage = ({ pdf, pageNumber, scale = 1.5 }) => {
   useEffect(() => {
     if (!pdf) return;
 
+    let pageRef = null;
+    let isCancelled = false;
+
     const renderPage = async () => {
-      const page = await pdf.getPage(pageNumber);
-      const viewport = page.getViewport({ scale });
-
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const context = canvas.getContext('2d');
-
-      // set đúng kích thước canvas
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-
-      // cancel render cũ nếu còn
-      if (renderTaskRef.current) renderTaskRef.current.cancel();
-
-      renderTaskRef.current = page.render({
-        canvasContext: context,
-        viewport,
-      });
-
       try {
+        pageRef = await pdf.getPage(pageNumber);
+        if (isCancelled) {
+          pageRef.cleanup();
+          return;
+        }
+        
+        const viewport = pageRef.getViewport({ scale });
+
+        const canvas = canvasRef.current;
+        if (!canvas || isCancelled) return;
+        const context = canvas.getContext('2d', { willReadFrequently: false });
+
+        // Clear canvas before rendering
+        context.clearRect(0, 0, canvas.width, canvas.height);
+
+        // set đúng kích thước canvas
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+
+        // cancel render cũ nếu còn
+        if (renderTaskRef.current) {
+          renderTaskRef.current.cancel();
+          renderTaskRef.current = null;
+        }
+
+        renderTaskRef.current = pageRef.render({
+          canvasContext: context,
+          viewport,
+        });
+
         await renderTaskRef.current.promise;
-        setLoaded(true);
+        if (!isCancelled) {
+          setLoaded(true);
+        }
       } catch (e) {
-        if (e.name !== 'RenderingCancelledException') console.error(e);
+        if (e.name !== 'RenderingCancelledException' && !isCancelled) {
+          console.error(e);
+        }
       }
     };
 
     renderPage();
 
     return () => {
-      if (renderTaskRef.current) renderTaskRef.current.cancel();
+      isCancelled = true;
+      
+      // Cancel render task
+      if (renderTaskRef.current) {
+        try {
+          renderTaskRef.current.cancel();
+        } catch (e) {
+          // Ignore errors during cancellation
+        }
+        renderTaskRef.current = null;
+      }
+      
+      // Clean up page resources
+      if (pageRef) {
+        try {
+          pageRef.cleanup();
+        } catch (e) {
+          // Ignore errors during cleanup
+        }
+        pageRef = null;
+      }
+      
+      // Clear and reset canvas completely
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const context = canvas.getContext('2d');
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        // Reset canvas size to free memory
+        canvas.width = 0;
+        canvas.height = 0;
+      }
     };
   }, [pdf, pageNumber, scale]);
 
@@ -52,3 +100,13 @@ const PDFPage = ({ pdf, pageNumber, scale = 1.5 }) => {
 };
 
 export default PDFPage;
+
+
+
+
+
+
+
+
+
+

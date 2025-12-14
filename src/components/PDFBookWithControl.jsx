@@ -1,92 +1,176 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import PDFPage from './PDFPage';
-import pdfjsLib from '../utils/pdf';
+import { processPDF } from '../utils/pdf';
 
-const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
+const PDFBookWithControls = ({ file }) => {
   const [pdf, setPdf] = useState(null);
+  const [pageTexts, setPageTexts] = useState([]);
   const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchResults, setSearchResults] = useState([]); // { page, matches: [text] }
-  const [highlightPage, setHighlightPage] = useState(null);
+  const [searchState, setSearchState] = useState({ results: [], targetPage: null }); // Combined state
+  const [error, setError] = useState(null);
+  const bookRef = useRef(null);
+  const pdfRef = useRef(null); // Track current PDF for cleanup
+
+  // Separate loadPdf function
+  const loadPdf = useCallback(async (fileToLoad) => {
+    try {
+      // Clean up old PDF before loading new one
+      if (pdfRef.current) {
+        try {
+          pdfRef.current.destroy();
+        } catch (e) {
+          console.warn('Error destroying PDF:', e);
+        }
+        pdfRef.current = null;
+      }
+      
+      // Reset state
+      setPdf(null);
+      setPageTexts([]);
+      setTotalPages(0);
+      setCurrentPage(1);
+      setSearchKeyword('');
+      setSearchState({ results: [], targetPage: null });
+      setError(null);
+      
+      // Force garbage collection hint
+      if (window.gc) {
+        window.gc();
+      }
+      
+      const { pdf, texts } = await processPDF(fileToLoad);
+      pdfRef.current = pdf;
+      setPdf(pdf);
+      setTotalPages(pdf.numPages);
+      setCurrentPage(1);
+      setPageTexts(texts);
+    } catch (error) {
+      setError(error.message || 'Failed to load PDF');
+      // Clean up on error
+      if (pdfRef.current) {
+        try {
+          pdfRef.current.destroy();
+        } catch (e) {
+          console.warn('Error destroying PDF:', e);
+        }
+        pdfRef.current = null;
+      }
+      setPdf(null);
+    }
+  }, []);
 
   // Load PDF
   useEffect(() => {
     if (!file) return;
 
-    const loadPdf = async () => {
-      const url = URL.createObjectURL(file);
-      const pdfDoc = await pdfjsLib.getDocument(url).promise;
-      setPdf(pdfDoc);
-      setTotalPages(pdfDoc.numPages);
-      onTotalPages?.(pdfDoc.numPages);
+    loadPdf(file);
+
+    return () => {
+      // Cleanup on unmount
+      if (pdfRef.current) {
+        try {
+          pdfRef.current.destroy();
+        } catch (e) {
+          console.warn('Error destroying PDF on unmount:', e);
+        }
+        pdfRef.current = null;
+      }
+      // Clear state to help garbage collection
+      setPdf(null);
+      setPageTexts([]);
     };
+  }, [file, loadPdf]);
 
-    loadPdf();
 
-    return () => file && URL.revokeObjectURL(file);
-  }, [file, onTotalPages]);
+  useEffect(() => {
+    if (searchState.targetPage && bookRef.current) {
+      bookRef.current.pageFlip().flip(searchState.targetPage - 1);
+    }
+  }, [searchState.targetPage]);
+
+  const onFlip = useCallback((e) => {
+    setCurrentPage(e.data + 1);
+  }, []);
+
+  if (error) {
+    return (
+      <div style={{ textAlign: 'center', padding: '20px' }}>
+        <p style={{ color: 'red', fontWeight: 'bold' }}>Error loading PDF</p>
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   if (!pdf) return <p style={{ textAlign: 'center' }}>Loading PDF...</p>;
 
-  // Control handlers
-  const goToPage = (pageNumber) => {
-    if (pageNumber < 1 || pageNumber > totalPages) return;
-    onPageChange?.(pageNumber);
-    setHighlightPage(pageNumber); // highlight khi click
-  };
+  const nextPage = () => bookRef.current.pageFlip().flipNext();
+  const prevPage = () => bookRef.current.pageFlip().flipPrev();
 
-  const nextPage = () => goToPage(Math.min(pageNum + 1, totalPages));
-  const prevPage = () => goToPage(Math.max(pageNum - 1, 1));
-
-  // Search handler
-  const handleSearch = async (e) => {
-    e.preventDefault();
-    if (!searchKeyword || !pdf) return;
+  // Search handler using pageTexts
+  const handleSearch = (keyword) => {
+    if (!keyword.trim() || pageTexts.length === 0) {
+      setSearchState({ results: [], targetPage: null });
+      return;
+    }
 
     const results = [];
-    for (let i = 1; i <= pdf.numPages; i++) {
-      const page = await pdf.getPage(i);
-      const content = await page.getTextContent();
-      const text = content.items.map(item => item.str).join(' ');
-      const regex = new RegExp(searchKeyword, 'gi');
-      const matches = text.match(regex);
-      if (matches && matches.length > 0) {
-        results.push({ page: i, matches });
+    pageTexts.forEach((text, index) => {
+      const lowerText = text.toLowerCase();
+      const lowerKeyword = keyword.toLowerCase();
+      
+      if (lowerText.includes(lowerKeyword)) {
+        const keywordIndex = lowerText.indexOf(lowerKeyword);
+        const start = Math.max(0, keywordIndex - 40);
+        const end = Math.min(text.length, keywordIndex + keyword.length + 40);
+        const preview = (start > 0 ? '...' : '') + 
+                       text.substring(start, end) + 
+                       (end < text.length ? '...' : '');
+        
+        results.push({
+          pageNumber: index + 1,
+          preview: preview,
+          matches: [keyword]
+        });
       }
-    }
+    });
 
     if (results.length === 0) {
       alert('Không tìm thấy từ khóa!');
+      setSearchState({ results: [], targetPage: null });
+    } else {
+      setSearchState({ results, targetPage: results[0].pageNumber });
     }
-    setSearchResults(results);
   };
 
   // Controls component
   const Controls = () => {
-    const [inputValue, setInputValue] = useState(pageNum);
+    const [inputValue, setInputValue] = useState(currentPage);
     const [searchValue, setSearchValue] = useState(searchKeyword);
 
-    useEffect(() => setInputValue(pageNum), [pageNum]);
+    useEffect(() => setInputValue(currentPage), [currentPage]);
 
     const handleInputChange = (e) => setInputValue(e.target.value);
     const handleGo = (e) => {
       e.preventDefault();
       const pageNumber = Number(inputValue);
-      if (pageNumber > 0 && pageNumber <= totalPages) goToPage(pageNumber);
+      if (pageNumber > 0 && pageNumber <= totalPages) bookRef.current.pageFlip().flip(pageNumber - 1);
     };
 
     const handleSearchInputChange = (e) => setSearchValue(e.target.value);
     const handleSearchSubmit = (e) => {
       e.preventDefault();
       setSearchKeyword(searchValue);
-      handleSearch(e);
+      handleSearch(searchValue);
     };
 
     return (
       <div style={{ marginTop: 10 }}>
-        <div>
-          <button onClick={prevPage} disabled={pageNum === 1}>Previous</button>
+        <span>Page {currentPage} / {totalPages}</span>
+        <div style={{ marginTop: "20px" }}>
+          <button onClick={prevPage} disabled={currentPage === 1}>Previous</button>
           <form style={{ display: 'inline-block', margin: '0 10px' }}>
             <input
               type="number"
@@ -98,8 +182,7 @@ const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
             />
             <button onClick={handleGo}>Go</button>
           </form>
-          <span> / {totalPages}</span>
-          <button onClick={nextPage} disabled={pageNum === totalPages}>Next</button>
+          <button onClick={nextPage} disabled={currentPage === totalPages}>Next</button>
         </div>
 
         {/* Tìm kiếm */}
@@ -114,18 +197,27 @@ const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
             />
             <button type="submit">Search</button>
           </form>
-          {searchResults.length > 0 && (
+          {searchState.results.length > 0 && (
             <div style={{ marginTop: 5, maxHeight: 200, overflowY: 'auto' }}>
-              {searchResults.map((res, idx) => (
+              <p>Kết quả: {searchState.results.length}</p>
+              {searchState.results.map((res, idx) => (
                 <div key={idx}>
                   <button
                     style={{
-                      backgroundColor: highlightPage === res.page ? 'yellow' : 'white',
-                      marginBottom: 2
+                      backgroundColor: currentPage === res.pageNumber ? 'yellow' : 'white',
+                      marginBottom: 2,
+                      padding: '5px 10px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      textAlign: 'left',
+                      border: '1px solid #ccc'
                     }}
-                    onClick={() => goToPage(res.page)}
+                    onClick={() => {
+                      bookRef.current.pageFlip().flip(res.pageNumber - 1);
+                    }}
                   >
-                    Trang {res.page}: {res.matches.length} kết quả
+                    <div style={{ fontWeight: 'bold' }}>Trang {res.pageNumber}</div>
+                    <div style={{ fontSize: '12px', color: '#666' }}>{res.preview}</div>
                   </button>
                 </div>
               ))}
@@ -136,18 +228,12 @@ const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
     );
   };
 
-  // Render spreads
-  const spreads = [];
-  spreads.push(
-    <div key="cover" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-      <PDFPage pdf={pdf} pageNumber={1} highlight={highlightPage === 1 ? searchKeyword : null} />
-    </div>
-  );
-  for (let i = 2; i <= totalPages; i += 2) {
-    spreads.push(
-      <div key={i} style={{ display: 'flex' }}>
-        <PDFPage pdf={pdf} pageNumber={i} highlight={highlightPage === i ? searchKeyword : null} />
-        {i + 1 <= totalPages && <PDFPage pdf={pdf} pageNumber={i + 1} highlight={highlightPage === i+1 ? searchKeyword : null} />}
+  // Render each page individually
+  const pages = [];
+  for (let i = 0; i < totalPages; i++) {
+    pages.push(
+      <div key={i} style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+        <PDFPage pdf={pdf} pageNumber={i+1} />
       </div>
     );
   }
@@ -155,15 +241,16 @@ const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
   return (
     <div style={{ textAlign: 'center' }}>
       <HTMLFlipBook
-        width={1200}
-        height={1600}
+        width={600}
+        height={800}
         size="stretch"
         showCover={true}
-        startPage={pageNum - 1}
-        onFlip={(e) => onPageChange?.(e.data + 1)}
+        startPage={0}
+        onFlip={onFlip}
         className="flipbook"
+        ref={bookRef}
       >
-        {spreads}
+        {pages}
       </HTMLFlipBook>
       <Controls />
     </div>
@@ -171,3 +258,5 @@ const PDFBookWithControls = ({ file, pageNum, onPageChange, onTotalPages }) => {
 };
 
 export default PDFBookWithControls;
+
+
