@@ -136,6 +136,7 @@ const WordPage = ({ html }) => {
         boxSizing: "border-box",
         overflow: "hidden",
         background: "white",
+        color: "black",
       }}
     />
   );

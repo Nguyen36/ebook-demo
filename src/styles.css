@@ -173,3 +173,9 @@ html, body, #root {
     min(1, calc(100vh / 800))
   );
 }
+@media (prefers-color-scheme: dark) {
+  .WordPage {
+    background-color: #333;
+    color: white; /* Chỉnh màu chữ sáng cho phù hợp */
+  }
+}
