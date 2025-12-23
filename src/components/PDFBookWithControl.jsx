@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import HTMLFlipBook from 'react-pageflip';
 import PDFPage from './PDFPage';
 import { processPDF } from '../utils/pdf';
+import '../styles.css';
 
 const PDFBookWithControls = ({ file }) => {
   const [pdf, setPdf] = useState(null);
@@ -240,7 +241,7 @@ const PDFBookWithControls = ({ file }) => {
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <HTMLFlipBook
+        <HTMLFlipBook
         width={600}
         height={800}
         size="stretch"
@@ -252,6 +253,7 @@ const PDFBookWithControls = ({ file }) => {
       >
         {pages}
       </HTMLFlipBook>
+     
       <Controls />
     </div>
   );

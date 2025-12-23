@@ -167,3 +167,9 @@ html, body, #root {
 .stf__parent {
   margin: auto;
 }
+.flipbook {
+  transform-origin: top center;
+  transform: scale(
+    min(1, calc(100vh / 800))
+  );
+}

@@ -16,7 +16,7 @@ function App() {
 
   return (
     <div style={{ textAlign: 'center' }}>
-      <h1>React PDF FlipBook Demo</h1>
+      <h1 style={{ textAlign: 'center' }}>Ebook</h1>
       <input type="file" accept="application/pdf" onChange={handleFileChange} />
       {file && <PDFBookWithControls file={file} />}
     </div>
