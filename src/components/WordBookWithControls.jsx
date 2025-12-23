@@ -22,7 +22,28 @@ const WordBookWithControls = ({ file }) => {
       try {
         const arrayBuffer = await file.arrayBuffer();
         const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
-        const splitPages = splitHtmlToPages(html, PAGE_WIDTH, PAGE_HEIGHT);
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+
+        // Tìm tất cả các thẻ <img> trong tài liệu HTML
+        const images = doc.querySelectorAll('img');
+
+        // Duyệt qua tất cả các ảnh và thêm CSS để scale ảnh
+        images.forEach(img => {
+          img.style.maxWidth = '100%';
+          img.style.height = 'auto';
+          img.style.display = 'block'; // Đảm bảo ảnh không bị lỗi canh lề
+          img.style.margin = '0 auto'; // Nếu muốn canh giữa ảnh
+
+          // Đảm bảo phần tử cha của ảnh có thể chứa ảnh
+          let parent = img.parentElement;
+          if (parent) {
+            parent.style.width = '100%';
+            parent.style.overflow = 'hidden'; // Đảm bảo không bị tràn ra ngoài
+          }
+        });
+        // Lấy lại HTML đã được cập nhật
+        const updatedHtml = doc.documentElement.outerHTML;
+        const splitPages = splitHtmlToPages(updatedHtml, PAGE_WIDTH, PAGE_HEIGHT);
         setPages(splitPages);
         setCurrentPage(1);
       } catch (err) {
