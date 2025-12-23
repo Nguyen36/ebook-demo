@@ -22,20 +22,44 @@ const EbookViewer = () => {
       setFileType(null);
     }
   };
-
   return (
-    <div style={{ textAlign: "center" }}>
-      <h1>Ebook</h1>
-      <input type="file" accept=".pdf,.docx" onChange={handleFileChange} />
-      
-      <div style={{ marginTop: 20 }}>
-        {file && fileType === "pdf" && (
-          <PDFBookWithControls file={file} />
-        )}
-        {file && fileType === "word" && (
-          <WordBookWithControls file={file} />
-        )}
+    <div
+      style={{
+        textAlign: "center",
+        minHeight: "100vh",
+        backgroundImage: "url('https://images.pexels.com/photos/1290141/pexels-photo-1290141.jpeg')",
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        transition: "background-image 0.3s ease",
+
+      }}
+    >
+      <div
+        style={{
+          color: "white",
+          backgroundColor: "rgba(0,0,0,0.45)",
+          padding: "32px 40px",
+          borderRadius: "14px" 
+        }}
+      >
+        <h1>Ebook</h1>
+
+        <input
+          type="file"
+          accept=".pdf,.docx"
+          onChange={handleFileChange}
+        />
+
+        <div style={{ marginTop: 20 }}>
+          {file && fileType === "pdf" && (
+            <PDFBookWithControls file={file} />
+          )}
+          {file && fileType === "word" && (
+            <WordBookWithControls file={file} />
+          )}
+        </div>
       </div>
+
     </div>
   );
 };
