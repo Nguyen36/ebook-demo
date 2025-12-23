@@ -25,7 +25,7 @@ const EbookViewer = () => {
 
   return (
     <div style={{ textAlign: "center" }}>
-      <h1>Ebook Viewer</h1>
+      <h1>Ebook</h1>
       <input type="file" accept=".pdf,.docx" onChange={handleFileChange} />
       
       <div style={{ marginTop: 20 }}>
