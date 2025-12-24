@@ -43,7 +43,7 @@ const WordBookWithControls = ({ file }) => {
         });
         // Lấy lại HTML đã được cập nhật
         const updatedHtml = doc.documentElement.outerHTML;
-        const splitPages = splitHtmlToPages(updatedHtml, PAGE_WIDTH, PAGE_HEIGHT);
+        const splitPages = await splitHtmlToPages(updatedHtml, PAGE_WIDTH, PAGE_HEIGHT);
         setPages(splitPages);
         setCurrentPage(1);
       } catch (err) {
@@ -265,14 +265,18 @@ const Controls = ({
 };
 
 // Hàm chia HTML Word thành nhiều page
-function splitHtmlToPages(html, pageWidth, pageHeight) {
+async function splitHtmlToPages(html, pageWidth, pageHeight) {
   const container = document.createElement("div");
   container.innerHTML = html;
   container.style.width = pageWidth + "px";
   container.style.position = "absolute";
   container.style.left = "-9999px";
   document.body.appendChild(container);
-
+  const images = container.querySelectorAll("img");
+  await Promise.all(Array.from(images).map(img => {
+    if (img.complete) return;
+    return new Promise(res => { img.onload = res; img.onerror = res; });
+  }));
   const pages = [];
   let page = createPage(pageHeight);
   let currentHeight = 0;
