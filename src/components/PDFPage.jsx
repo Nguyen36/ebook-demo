@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 
-const PDFPage = ({ pdf, pageNumber, scale = 1.5 }) => {
+const PDFPage = ({ pdf, pageNumber, scale = 2 }) => {
   const canvasRef = useRef(null);
   const renderTaskRef = useRef(null);
   const [loaded, setLoaded] = useState(false);
