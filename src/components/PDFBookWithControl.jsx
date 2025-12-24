@@ -62,12 +62,9 @@ const PDFBookWithControls = ({ file }) => {
   }, [file, loadPdf]);
 
  const onFlip = useCallback((e) => {
+  playFlipSound()
   setCurrentPage(e.data + 1);
-
-  if (flipAudioRef.current) {
-    flipAudioRef.current.currentTime = 0;
-    flipAudioRef.current.play().catch(() => {});
-  }
+  
 }, []);
 
   useEffect(() => {
@@ -84,12 +81,12 @@ const playFlipSound = () => {
   audio.play().catch(() => {});
 };
   const nextPage = () => {
-  playFlipSound();
+  // playFlipSound();
   bookRef.current?.pageFlip().flipNext();
 };
 
 const prevPage = () => {
-  playFlipSound();
+  // playFlipSound();
   bookRef.current?.pageFlip().flipPrev();
 };
 
