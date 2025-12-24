@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import PDFBookWithControls from "./components/PDFBookWithControl";
 import WordBookWithControls from "./components/WordBookWithControls";
-
+import Snowfall from "react-snowfall";
 const EbookViewer = () => {
   const [file, setFile] = useState(null);
   const [fileType, setFileType] = useState(null); // "pdf" | "word"
@@ -27,7 +27,7 @@ const EbookViewer = () => {
       style={{
         textAlign: "center",
         minHeight: "100vh",
-        backgroundImage: "url('https://images.pexels.com/photos/1290141/pexels-photo-1290141.jpeg')",
+        backgroundImage: "url('https://images.careerviet.vn/content/images/hinh-nen-Noel-CareerBuilder-51.jpg')",
         backgroundSize: "cover",
         backgroundPosition: "center",
         transition: "background-image 0.3s ease",
@@ -49,6 +49,11 @@ const EbookViewer = () => {
           accept=".pdf,.docx"
           onChange={handleFileChange}
         />
+   <Snowfall
+      color="white"
+      snowflakeCount={200}
+      style={{ position: "absolute", width: "100%", height: "100%", zIndex: 1000, pointerEvents: "none" }}
+    />
 
         <div style={{ marginTop: 20 }}>
           {file && fileType === "pdf" && (

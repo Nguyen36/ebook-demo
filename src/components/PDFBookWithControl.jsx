@@ -4,6 +4,7 @@ import HTMLFlipBook from "react-pageflip";
 import PDFPage from "./PDFPage"; // component render 1 page
 import Controls from "./Controls";
 import { processPDF } from "../utils/pdf"; // giả sử bạn có hàm trích text + pdf object
+import Snowfall from "react-snowfall";
 
 const PDFBookWithControls = ({ file }) => {
   const [pdf, setPdf] = useState(null);
@@ -13,6 +14,7 @@ const PDFBookWithControls = ({ file }) => {
   const [searchKeyword, setSearchKeyword] = useState("");
   const [searchState, setSearchState] = useState({ results: [], targetPage: null });
   const [error, setError] = useState(null);
+  const flipAudioRef = useRef(null);
 
   const bookRef = useRef(null);
   const pdfRef = useRef(null);
@@ -23,7 +25,7 @@ const PDFBookWithControls = ({ file }) => {
         try { pdfRef.current.destroy(); } catch (e) {}
         pdfRef.current = null;
       }
-
+      flipAudioRef.current = new Audio("/sounds/page-flip.mp3");
       setPdf(null);
       setPageTexts([]);
       setTotalPages(0);
@@ -59,16 +61,37 @@ const PDFBookWithControls = ({ file }) => {
     };
   }, [file, loadPdf]);
 
-  const onFlip = useCallback((e) => setCurrentPage(e.data + 1), []);
+ const onFlip = useCallback((e) => {
+  setCurrentPage(e.data + 1);
+
+  if (flipAudioRef.current) {
+    flipAudioRef.current.currentTime = 0;
+    flipAudioRef.current.play().catch(() => {});
+  }
+}, []);
 
   useEffect(() => {
     if (searchState.targetPage && bookRef.current) {
       bookRef.current.pageFlip().flip(searchState.targetPage - 1);
     }
   }, [searchState.targetPage]);
+const playFlipSound = () => {
+  const audio = flipAudioRef.current;
+  if (!audio) return;
 
-  const nextPage = () => bookRef.current?.pageFlip().flipNext();
-  const prevPage = () => bookRef.current?.pageFlip().flipPrev();
+  audio.pause();
+  audio.currentTime = 0;
+  audio.play().catch(() => {});
+};
+  const nextPage = () => {
+  playFlipSound();
+  bookRef.current?.pageFlip().flipNext();
+};
+
+const prevPage = () => {
+  playFlipSound();
+  bookRef.current?.pageFlip().flipPrev();
+};
 
   const handleSearch = (keyword) => {
     if (!keyword.trim() || pageTexts.length === 0) {
@@ -110,7 +133,12 @@ const PDFBookWithControls = ({ file }) => {
     );
   }
   return (
-    <div style={{ textAlign: "center" }}>
+    <div style={{ textAlign: "center", position: "relative" }}>
+        <Snowfall
+      color="white"
+      snowflakeCount={200}
+      style={{ position: "absolute", width: "100%", height: "100%", zIndex: 1000, pointerEvents: "none" }}
+    />
       <HTMLFlipBook
         width={470}
         height={500}
