@@ -109,12 +109,11 @@ const PDFBookWithControls = ({ file }) => {
       </div>
     );
   }
-
   return (
     <div style={{ textAlign: "center" }}>
       <HTMLFlipBook
-        width={600}
-        height={800}
+        width={470}
+        height={500}
         size="stretch"
         showCover={true}
         startPage={0}

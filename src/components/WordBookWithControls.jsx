@@ -5,45 +5,93 @@ import mammoth from "mammoth";
 
 // Kích thước 1 trang
 const PAGE_WIDTH = 600;
-const PAGE_HEIGHT = 800;
+const PAGE_HEIGHT = 850;
 
 const WordBookWithControls = ({ file }) => {
   const [pages, setPages] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchKeyword, setSearchKeyword] = useState("");
-  const [searchState, setSearchState] = useState({ results: [], targetPage: null });
+  const [searchState, setSearchState] = useState({
+    results: [],
+    targetPage: null,
+  });
   const bookRef = useRef(null);
 
   // Load file Word
   useEffect(() => {
     if (!file) return;
+const styleMap = [
+  // Bảng
+  "table => table", 
+  "table row => tr", 
+  "table cell => td", 
+  "table header => th",
+
+  // Hình ảnh
+  "image => img { max-width: 100%; height: auto; }",
+
+  // Tiêu đề
+  "heading 1 => h1",
+  "heading 2 => h2",
+  "heading 3 => h3",
+
+  // Đoạn văn
+  "paragraph => p",
+  "paragraph[alignment='left'] => p { text-align: left; }",
+  "paragraph[alignment='center'] => p { text-align: center; }",
+
+  // Định dạng văn bản
+  "bold => strong",
+  "italic => em",
+  "underline => u",
+
+  // Danh sách
+  "unordered list => ul",
+  "unordered list item => li",
+  "ordered list => ol",
+  "ordered list item => li",
+
+  // Liên kết
+  "hyperlink => a[href]",
+
+  // Màu sắc
+  "run[color='FF0000'] => span { color: red; }",
+  "run[background-color='FFFF00'] => span { background-color: yellow; }"
+];
 
     const loadWord = async () => {
       try {
         const arrayBuffer = await file.arrayBuffer();
-        const { value: html } = await mammoth.convertToHtml({ arrayBuffer });
-        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const { value: html } = await mammoth.convertToHtml({
+          arrayBuffer,
+            styleMap:styleMap,
+        });
+        const doc = new DOMParser().parseFromString(html, "text/html");
 
         // Tìm tất cả các thẻ <img> trong tài liệu HTML
-        const images = doc.querySelectorAll('img');
+        const images = doc.querySelectorAll("img");
 
         // Duyệt qua tất cả các ảnh và thêm CSS để scale ảnh
-        images.forEach(img => {
-          img.style.maxWidth = '100%';
-          img.style.height = 'auto';
-          img.style.display = 'block'; // Đảm bảo ảnh không bị lỗi canh lề
-          img.style.margin = '0 auto'; // Nếu muốn canh giữa ảnh
+        images.forEach((img) => {
+          img.style.maxWidth = "100%";
+          img.style.height = "auto";
+          img.style.display = "block"; // Đảm bảo ảnh không bị lỗi canh lề
+          img.style.margin = "0 auto"; // Nếu muốn canh giữa ảnh
 
           // Đảm bảo phần tử cha của ảnh có thể chứa ảnh
           let parent = img.parentElement;
           if (parent) {
-            parent.style.width = '100%';
-            parent.style.overflow = 'hidden'; // Đảm bảo không bị tràn ra ngoài
+            parent.style.width = "100%";
+            parent.style.overflow = "hidden"; // Đảm bảo không bị tràn ra ngoài
           }
         });
         // Lấy lại HTML đã được cập nhật
         const updatedHtml = doc.documentElement.outerHTML;
-        const splitPages = await splitHtmlToPages(updatedHtml, PAGE_WIDTH, PAGE_HEIGHT);
+        const splitPages = await splitHtmlToPages(
+          updatedHtml,
+          PAGE_WIDTH,
+          PAGE_HEIGHT
+        );
         setPages(splitPages);
         setCurrentPage(1);
       } catch (err) {
@@ -78,7 +126,10 @@ const WordBookWithControls = ({ file }) => {
           const keywordIndex = lowerText.indexOf(lowerKeyword);
           const start = Math.max(0, keywordIndex - 40);
           const end = Math.min(text.length, keywordIndex + keyword.length + 40);
-          const preview = (start > 0 ? "..." : "") + text.substring(start, end) + (end < text.length ? "..." : "");
+          const preview =
+            (start > 0 ? "..." : "") +
+            text.substring(start, end) +
+            (end < text.length ? "..." : "");
 
           results.push({
             pageNumber: index + 1,
@@ -158,6 +209,7 @@ const WordPage = ({ html }) => {
         overflow: "hidden",
         background: "white",
         color: "black",
+        textAlign: "left",
       }}
     />
   );
@@ -207,7 +259,10 @@ const Controls = ({
         <button onClick={prevPage} disabled={currentPage === 1}>
           Previous
         </button>
-        <form style={{ display: "inline-block", margin: "0 10px" }} onSubmit={handleGo}>
+        <form
+          style={{ display: "inline-block", margin: "0 10px" }}
+          onSubmit={handleGo}
+        >
           <input
             type="number"
             value={inputValue}
@@ -242,7 +297,8 @@ const Controls = ({
               <div key={idx}>
                 <button
                   style={{
-                    backgroundColor: currentPage === res.pageNumber ? "yellow" : "white",
+                    backgroundColor:
+                      currentPage === res.pageNumber ? "yellow" : "white",
                     marginBottom: 2,
                     padding: "5px 10px",
                     cursor: "pointer",
@@ -250,10 +306,16 @@ const Controls = ({
                     textAlign: "left",
                     border: "1px solid #ccc",
                   }}
-                  onClick={() => bookRef.current?.pageFlip().flip(res.pageNumber - 1)}
+                  onClick={() =>
+                    bookRef.current?.pageFlip().flip(res.pageNumber - 1)
+                  }
                 >
-                  <div style={{ fontWeight: "bold" }}>Trang {res.pageNumber}</div>
-                  <div style={{ fontSize: "12px", color: "#666" }}>{res.preview}</div>
+                  <div style={{ fontWeight: "bold" }}>
+                    Trang {res.pageNumber}
+                  </div>
+                  <div style={{ fontSize: "12px", color: "#666" }}>
+                    {res.preview}
+                  </div>
                 </button>
               </div>
             ))}
@@ -273,10 +335,15 @@ async function splitHtmlToPages(html, pageWidth, pageHeight) {
   container.style.left = "-9999px";
   document.body.appendChild(container);
   const images = container.querySelectorAll("img");
-  await Promise.all(Array.from(images).map(img => {
-    if (img.complete) return;
-    return new Promise(res => { img.onload = res; img.onerror = res; });
-  }));
+  await Promise.all(
+    Array.from(images).map((img) => {
+      if (img.complete) return;
+      return new Promise((res) => {
+        img.onload = res;
+        img.onerror = res;
+      });
+    })
+  );
   const pages = [];
   let page = createPage(pageHeight);
   let currentHeight = 0;
