@@ -39,7 +39,7 @@ const EbookViewer = () => {
 
   if (!isValid) {
     // Token không hợp lệ, redirect hoặc hiển thị trang trống
-    return <h1>User không thuộc hệ thống</h1>;
+    return <h1>Vui lòng nhập thông tin user trên URL để vào hệ thống</h1>;
   }
 
   const handleFileChange = (e) => {
